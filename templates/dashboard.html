@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+
+{% block title %}数据大厅{% endblock %}
+
+{% block content %}
+<style>
+    /* 自定义渐变阴影 */
+    .shadow-soft {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+    .card-hover-effect {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-hover-effect:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+    }
+</style>
+
+<div class="container py-4">
+    <!-- 顶部横幅 -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <h1 class="display-4 fw-bold text-primary mb-2">数据大厅</h1>
+            <p class="lead text-muted fst-italic">"每一分钟的专注，都在塑造更好的自己"</p>
+        </div>
+    </div>
+
+    <!-- 第一行：核心数据卡片区 -->
+    <div class="row g-4 mb-5">
+        
+        <!-- 左侧大块：累计成就 (深色/蓝色系) -->
+        <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow-soft" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                    <h5 class="fw-bold text-primary mb-0">🏆 累计成就</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 text-center">
+                        <div class="col-4">
+                            <h6 class="text-muted text-uppercase small mb-2">总专注次数</h6>
+                            <div class="display-6 fw-bold text-dark">{{ total_focus_count }}</div>
+                            <small class="text-muted">次</small>
+                        </div>
+                        <div class="col-4 border-start border-end">
+                            <h6 class="text-muted text-uppercase small mb-2">总专注时长</h6>
+                            <div class="display-6 fw-bold text-primary">{{ total_focus_minutes }}</div>
+                            <small class="text-muted">分钟</small>
+                        </div>
+                        <div class="col-4">
+                            <h6 class="text-muted text-uppercase small mb-2">日均投入</h6>
+                            <div class="display-6 fw-bold text-dark">{{ daily_avg_minutes }}</div>
+                            <small class="text-muted">分钟/天</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧大块：今日战况 (浅色/暖色系) -->
+        <div class="col-lg-6">
+            <div class="card h-100 border-0 shadow-soft" style="background: linear-gradient(135deg, #fff3cd 0%, #fff 100%);">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                    <h5 class="fw-bold text-warning mb-0">🔥 今日战况</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 text-center">
+                        <div class="col-4">
+                            <h6 class="text-muted text-uppercase small mb-2">今日次数</h6>
+                            <div class="display-6 fw-bold text-dark">{{ today_focus_count }}</div>
+                            <small class="text-muted">次</small>
+                        </div>
+                        <div class="col-4 border-start border-end">
+                            <h6 class="text-muted text-uppercase small mb-2">今日时长</h6>
+                            <div class="display-6 fw-bold text-warning">{{ today_focus_minutes }}</div>
+                            <small class="text-muted">分钟</small>
+                        </div>
+                        <div class="col-4">
+                            <h6 class="text-muted text-uppercase small mb-2">已完成任务</h6>
+                            <div class="display-6 fw-bold text-success">{{ today_completed_tasks }}</div>
+                            <small class="text-muted">个</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二行：深度分析图表区 -->
+    <div class="row g-4">
+        
+        <!-- 左侧：专注分布 (饼图) -->
+        <div class="col-lg-5">
+            <div class="card h-100 border-0 shadow-soft card-hover-effect">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="fw-bold mb-0 text-secondary">专注分布</h5>
+                    <small class="text-muted">你的时间都去哪儿了？</small>
+                </div>
+                <div class="card-body px-4 pb-4 d-flex align-items-center justify-content-center position-relative">
+                    <div style="width: 100%; max-width: 300px; min-height: 250px;">
+                        <canvas id="distributionChart"></canvas>
+                        <div id="noDataMessage" class="position-absolute top-50 start-50 translate-middle text-muted d-none">
+                            暂无专注数据
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：专注趋势 (折线/柱状图) -->
+        <div class="col-lg-7">
+            <div class="card h-100 border-0 shadow-soft card-hover-effect">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-secondary">专注趋势</h5>
+                        <small class="text-muted">最近 7 天的投入曲线</small>
+                    </div>
+                    <!-- 模拟切换按钮 -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary active">近7天</button>
+                        <button type="button" class="btn btn-outline-secondary" disabled>本月</button>
+                    </div>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div style="height: 300px; width: 100%;">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 引入 Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // ==========================
+        // 1. 专注分布图 (Doughnut)
+        // ==========================
+        const distLabels = {{ distribution_labels | tojson }};
+        const distData = {{ distribution_data | tojson }};
+        const distCtx = document.getElementById('distributionChart').getContext('2d');
+        
+        if (!distData || distData.length === 0 || distData.every(v => v === 0)) {
+            document.getElementById('noDataMessage').classList.remove('d-none');
+        } else {
+            new Chart(distCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: distLabels,
+                    datasets: [{
+                        data: distData,
+                        backgroundColor: [
+                            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+                            '#858796', '#5a5c69', '#fd7e14', '#20c9a6', '#6610f2'
+                        ],
+                        hoverOffset: 4,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%', // 环形厚度
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                boxWidth: 8
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    let value = context.parsed || 0;
+                                    label += value + ' 分钟';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==========================
+        // 2. 专注趋势图 (Line with fill)
+        // ==========================
+        const trendLabels = {{ trend_labels | tojson }};
+        const trendData = {{ trend_data | tojson }};
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: '专注时长 (分钟)',
+                    data: trendData,
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    pointBackgroundColor: '#4e73df',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#4e73df',
+                    fill: true,
+                    tension: 0.4, // 平滑曲线
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        titleColor: '#6e707e',
+                        bodyColor: '#858796',
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: false
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#858796'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#eaecf4',
+                            borderDash: [2, 2],
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#858796',
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

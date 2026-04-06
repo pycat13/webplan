@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block title %}首页{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-10">
+
+        <!-- 添加任务表单卡片 -->
+        <div class="card shadow-sm border-0 mb-4" style="border-radius: 1rem;">
+            <div class="card-body p-4">
+                <h5 class="card-title fw-bold mb-3">添加新任务</h5>
+                <form action="{{ url_for('add_task') }}" method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" name="title" placeholder="准备做什么？" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="description" placeholder="补充描述 (选填)">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="priority">
+                                <option value="3">🔴 高</option>
+                                <option value="2" selected>🟡 中</option>
+                                <option value="1">🟢 低</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1 d-grid">
+                            <button type="submit" class="btn btn-primary">+</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 任务列表 -->
+        <div class="card shadow-sm border-0" style="border-radius: 1rem;">
+            <div class="card-body p-4">
+                <h5 class="card-title fw-bold mb-3">我的待办</h5>
+
+                {% if tasks %}
+                <ul class="list-group list-group-flush">
+                    {% for task in tasks %}
+                    <li class="list-group-item d-flex justify-content-between align-items-start py-3 task-item"
+                        style="border-color: #f1f3f5;" data-id="{{ task.id }}" data-priority="{{ task.priority }}"
+                        data-completed="{{ 'true' if task.is_completed else 'false' }}">
+                        <div class="d-flex align-items-start mt-1 w-100">
+                            <!-- 状态 Checkbox -->
+                            <div class="form-check me-3">
+                                <input class="form-check-input task-checkbox" type="checkbox" value="{{ task.id }}"
+                                    id="task-{{ task.id }}" {% if task.is_completed %}checked{% endif %}
+                                    style="transform: scale(1.3); cursor: pointer;">
+                            </div>
+                            <!-- 任务内容 -->
+                            <div class="ms-1 w-100">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <h6 class="mb-0 task-title {% if task.is_completed %}text-muted text-decoration-line-through{% endif %}"
+                                            id="title-{{ task.id }}" style="transition: all 0.3s ease;">
+                                            {{ task.title }}
+                                        </h6>
+                                        {% set pomo_count = task.pomodoros|length %}
+                                        {% if pomo_count > 0 %}
+                                            {% set total_duration = task.pomodoros|sum(attribute='duration_minutes') %}
+                                            <span class="badge bg-light text-dark border rounded-pill">
+                                                🍅 {{ pomo_count }}次 ({{ total_duration }}分钟)
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <!-- 优先级 Badge -->
+                                    <span
+                                        class="badge rounded-pill {% if task.priority == 3 %}bg-danger{% elif task.priority == 2 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                        {% if task.priority == 3 %}高{% elif task.priority == 2 %}中{% else %}低{% endif %}
+                                    </span>
+                                </div>
+                                {% if task.description %}
+                                <p class="mb-1 text-muted small {% if task.is_completed %}text-decoration-line-through{% endif %} mt-2"
+                                    id="desc-{{ task.id }}">{{ task.description }}</p>
+                                {% endif %}
+                                <small class="text-muted" style="font-size: 0.75rem;">创建于: {{
+                                    task.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        <!-- 删除表单 -->
+                        <div class="ms-3 align-self-center">
+                            <form action="{{ url_for('delete_task', task_id=task.id) }}" method="POST" class="m-0"
+                                onsubmit="return confirm('确定要删除这个任务吗？');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-trash3" viewBox="0 0 16 16">
+                                        <path
+                                            d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.813 1-.864 10.78a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.187 3.5h9.626Zm-8.156 4a.5.5 0 0 1 .494.458l.5 7a.5.5 0 0 1-.998.07l-.5-7A.5.5 0 0 1 4.656 7.5Zm6.688 0a.5.5 0 0 1 .5.514l-.5 7a.5.5 0 0 1-.998-.07l.5-7a.5.5 0 0 1 .498-.444ZM8 7.5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5Z" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <p class="mb-0">这里空空的，赶快添加你的第一个任务吧！</p>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Vanilla JS 控制异步状态更新与智能排序 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkboxes = document.querySelectorAll('.task-checkbox');
+        const listContainer = document.querySelector('.list-group');
+
+        /**
+         * 核心排序函数：对列表中所有任务 DOM 节点进行三层条件排序
+         * 排序完成后将节点按新顺序重新插入容器，实现无刷新重排
+         */
+        function reorderTasksDOM() {
+            if (!listContainer) return;
+
+            // 获取所有任务节点并转为数组
+            const items = Array.from(listContainer.querySelectorAll('.task-item'));
+
+            items.sort((a, b) => {
+                // --- 第一层比较：完成状态 (未完成排在已完成前面) ---
+                const aCompleted = a.dataset.completed === 'true';
+                const bCompleted = b.dataset.completed === 'true';
+                if (aCompleted !== bCompleted) {
+                    return aCompleted ? 1 : -1; // false(未完成) 排前面
+                }
+
+                // --- 第二层比较：优先级降序 (数值大的排前面，3高 > 2中 > 1低) ---
+                const priorityA = parseInt(a.dataset.priority, 10);
+                const priorityB = parseInt(b.dataset.priority, 10);
+                if (priorityA !== priorityB) {
+                    return priorityB - priorityA; // 降序
+                }
+
+                // --- 第三层比较：兜底按 ID 升序 (先创建的排前面) ---
+                const idA = parseInt(a.dataset.id, 10);
+                const idB = parseInt(b.dataset.id, 10);
+                return idA - idB; // 升序
+            });
+
+            // 将排序后的节点按新顺序重新插入容器 (appendChild 会自动移动已有节点)
+            items.forEach(item => listContainer.appendChild(item));
+        }
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function () {
+                const taskId = this.value;
+                const isChecked = this.checked;
+
+                // 获取相关 DOM 元素
+                const titleEl = document.getElementById(`title-${taskId}`);
+                const descEl = document.getElementById(`desc-${taskId}`);
+                const taskItemEl = this.closest('li.task-item');
+
+                // 视觉反馈：降低透明度表示正在处理
+                taskItemEl.style.transition = 'opacity 0.2s ease';
+                taskItemEl.style.opacity = '0.4';
+
+                // 发起 fetch PATCH 请求
+                fetch(`/api/tasks/${taskId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('网络响应错误');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // 【关键步骤 1】先更新 data-completed 属性，确保排序函数拿到最新状态
+                            taskItemEl.dataset.completed = data.is_completed ? 'true' : 'false';
+
+                            // 【关键步骤 2】切换文字样式（删除线 + 变灰）
+                            if (data.is_completed) {
+                                titleEl.classList.add('text-muted', 'text-decoration-line-through');
+                                if (descEl) descEl.classList.add('text-decoration-line-through');
+                            } else {
+                                titleEl.classList.remove('text-muted', 'text-decoration-line-through');
+                                if (descEl) descEl.classList.remove('text-decoration-line-through');
+                            }
+
+                            // 【关键步骤 3】触发 DOM 重新排序
+                            setTimeout(() => {
+                                reorderTasksDOM();
+                                // 排序完成后恢复透明度
+                                taskItemEl.style.transition = 'opacity 0.4s ease';
+                                taskItemEl.style.opacity = '1';
+                            }, 150);
+
+                        } else {
+                            alert('更新失败: ' + data.message);
+                            this.checked = !isChecked;
+                            taskItemEl.style.opacity = '1';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('系统出错，请稍候重试');
+                        this.checked = !isChecked;
+                        taskItemEl.style.opacity = '1';
+                    });
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,445 @@
+{% extends 'base.html' %}
+
+{% block title %}番茄自习室{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8 col-lg-7">
+        <div class="card shadow-sm border-0" style="border-radius: 1rem;">
+            <div class="card-header bg-white border-0 pt-4 pb-0 text-center">
+                <h4 class="mb-0 fw-bold">🍅 番茄自习室</h4>
+                <p class="text-muted mt-2 mb-0">专注高效，任务必达</p>
+            </div>
+            <div class="card-body p-4">
+
+                <!-- 任务选择下拉菜单 -->
+                <div class="mb-4">
+                    <select class="form-select form-select-lg" id="task-select">
+                        <option value="" selected>不关联任务（自由专注）</option>
+                        {% for task in tasks %}
+                        <option value="{{ task.id }}">
+                            {% if task.priority == 3 %}🔴{% elif task.priority == 2 %}🟡{% else %}🟢{% endif %}
+                            {{ task.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 选项卡导航 -->
+                <ul class="nav nav-tabs justify-content-center mb-4" id="pomodoro-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="countdown-tab" data-bs-toggle="tab" data-bs-target="#countdown" type="button" role="tab" aria-controls="countdown" aria-selected="true">
+                            ⏱️ 倒计时模式
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="stopwatch-tab" data-bs-toggle="tab" data-bs-target="#stopwatch" type="button" role="tab" aria-controls="stopwatch" aria-selected="false">
+                            ⏲️ 正计时模式
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- 选项卡内容 -->
+                <div class="tab-content" id="pomodoro-tabs-content">
+
+                    <!-- 倒计时模式面板 -->
+                    <div class="tab-pane fade show active" id="countdown" role="tabpanel" aria-labelledby="countdown-tab">
+                        
+                        <!-- 时间设置 -->
+                        <div class="row g-3 mb-4 justify-content-center">
+                            <div class="col-6 col-md-5">
+                                <label class="form-label text-muted small">工作时长（分钟）</label>
+                                <input type="number" class="form-control" id="work-duration" value="25" min="1" max="120">
+                            </div>
+                            <div class="col-6 col-md-5">
+                                <label class="form-label text-muted small">休息时长（分钟）</label>
+                                <input type="number" class="form-control" id="break-duration" value="5" min="1" max="60">
+                            </div>
+                        </div>
+
+                        <!-- 状态提示 -->
+                        <div class="text-center mb-2">
+                            <span id="countdown-status" class="fs-5 fw-bold text-primary">准备开始</span>
+                        </div>
+
+                        <!-- 超大时间显示 -->
+                        <h1 id="countdown-display" class="display-1 fw-bold my-4 text-center"
+                            style="font-variant-numeric: tabular-nums; letter-spacing: 0.05em; transition: color 0.3s ease;">
+                            25:00
+                        </h1>
+
+                        <!-- 操作按钮组 -->
+                        <div class="d-flex justify-content-center gap-3 mt-3 mb-2">
+                            <button id="countdown-btn-start" class="btn btn-primary btn-lg px-4 rounded-pill shadow-sm">
+                                ▶ 开始
+                            </button>
+                            <button id="countdown-btn-pause" class="btn btn-warning btn-lg px-4 rounded-pill shadow-sm" disabled>
+                                ⏸ 暂停
+                            </button>
+                            <button id="countdown-btn-reset" class="btn btn-danger btn-lg px-4 rounded-pill shadow-sm">
+                                ✕ 重置
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <!-- 正计时模式面板 -->
+                    <div class="tab-pane fade" id="stopwatch" role="tabpanel" aria-labelledby="stopwatch-tab">
+                        
+                        <!-- 状态提示 -->
+                        <div class="text-center mb-2">
+                            <span id="stopwatch-status" class="fs-5 fw-bold text-secondary">点击开始计时</span>
+                        </div>
+
+                        <!-- 超大时间显示 -->
+                        <h1 id="stopwatch-display" class="display-1 fw-bold my-4 text-center"
+                            style="font-variant-numeric: tabular-nums; letter-spacing: 0.05em;">
+                            00:00:00
+                        </h1>
+
+                        <!-- 操作按钮组 -->
+                        <div class="d-flex justify-content-center gap-3 mt-3 mb-2">
+                            <button id="stopwatch-btn-start" class="btn btn-success btn-lg px-4 rounded-pill shadow-sm">
+                                ▶ 开始
+                            </button>
+                            <button id="stopwatch-btn-pause" class="btn btn-warning btn-lg px-4 rounded-pill shadow-sm" disabled>
+                                ⏸ 暂停
+                            </button>
+                            <button id="stopwatch-btn-end" class="btn btn-primary btn-lg px-4 rounded-pill shadow-sm" disabled>
+                                ✅ 结束并记录
+                            </button>
+                            <button id="stopwatch-btn-reset" class="btn btn-danger btn-lg px-4 rounded-pill shadow-sm">
+                                ✕ 重置
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Vanilla JS 番茄钟计时器逻辑 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // ===== 通用 DOM 引用 =====
+        const taskSelect = document.getElementById('task-select');
+
+        // ===============================
+        // ===== 倒计时模式（含休息） =====
+        // ===============================
+        const countdownDisplay = document.getElementById('countdown-display');
+        const countdownStatus = document.getElementById('countdown-status');
+        const countdownBtnStart = document.getElementById('countdown-btn-start');
+        const countdownBtnPause = document.getElementById('countdown-btn-pause');
+        const countdownBtnReset = document.getElementById('countdown-btn-reset');
+        const workDurationInput = document.getElementById('work-duration');
+        const breakDurationInput = document.getElementById('break-duration');
+
+        const PHASE_WORK = 'work';
+        const PHASE_BREAK = 'break';
+
+        let countdownTimerId = null;
+        let countdownRemainingSeconds = 0;
+        let countdownIsRunning = false;
+        let countdownCurrentPhase = PHASE_WORK;
+
+        // ===== 倒计时：格式化时间 =====
+        function formatCountdownTime(totalSec) {
+            const m = Math.floor(totalSec / 60);
+            const s = totalSec % 60;
+            return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+
+        // ===== 倒计时：更新显示 =====
+        function updateCountdownDisplay() {
+            countdownDisplay.textContent = formatCountdownTime(countdownRemainingSeconds);
+        }
+
+        // ===== 倒计时：更新状态显示 =====
+        function updateCountdownStatus() {
+            if (countdownCurrentPhase === PHASE_WORK) {
+                countdownStatus.textContent = '正在专注';
+                countdownStatus.className = 'fs-5 fw-bold text-dark';
+                countdownDisplay.className = 'display-1 fw-bold my-4 text-center text-dark';
+            } else {
+                countdownStatus.textContent = '休息中';
+                countdownStatus.className = 'fs-5 fw-bold text-success';
+                countdownDisplay.className = 'display-1 fw-bold my-4 text-center text-success';
+            }
+        }
+
+        // ===== 倒计时：发送记录到后端 =====
+        function logPomodoro(durationMinutes) {
+            const selectedTaskId = taskSelect.value;
+            const payload = { duration: durationMinutes };
+            if (selectedTaskId) {
+                payload.task_id = parseInt(selectedTaskId, 10);
+            }
+
+            fetch('/api/pomodoro/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        console.log('专注记录已保存');
+                    } else {
+                        console.error('保存失败:', data.message);
+                    }
+                })
+                .catch(function (err) {
+                    console.error('网络错误:', err);
+                });
+        }
+
+        // ===== 倒计时：重置到工作模式初始状态 =====
+        function resetCountdown() {
+            clearInterval(countdownTimerId);
+            countdownTimerId = null;
+            countdownIsRunning = false;
+            countdownCurrentPhase = PHASE_WORK;
+            
+            // 从 localStorage 读取或使用当前输入框的值
+            const savedWork = localStorage.getItem('pomodoroWorkDuration');
+            const savedBreak = localStorage.getItem('pomodoroBreakDuration');
+            
+            if (savedWork) workDurationInput.value = savedWork;
+            if (savedBreak) breakDurationInput.value = savedBreak;
+
+            countdownRemainingSeconds = parseInt(workDurationInput.value, 10) * 60;
+            updateCountdownDisplay();
+            updateCountdownStatus();
+            countdownBtnStart.disabled = false;
+            countdownBtnPause.disabled = true;
+            workDurationInput.disabled = false;
+            breakDurationInput.disabled = false;
+            taskSelect.disabled = false;
+        }
+
+        // ===== 倒计时：切换到休息模式 =====
+        function switchToBreak() {
+            countdownCurrentPhase = PHASE_BREAK;
+            // 确保休息时间不为0或非法值
+            let breakMin = parseInt(breakDurationInput.value, 10);
+            if (isNaN(breakMin) || breakMin < 1) breakMin = 5;
+            
+            countdownRemainingSeconds = breakMin * 60;
+            updateCountdownDisplay();
+            updateCountdownStatus();
+
+            // 自动开始倒计时
+            if (!countdownTimerId) {
+                countdownIsRunning = true;
+                countdownTimerId = setInterval(countdownTick, 1000);
+                
+                // 更新按钮状态
+                countdownBtnStart.disabled = true;
+                countdownBtnPause.disabled = false;
+            }
+        }
+
+        // ===== 倒计时：工作阶段完成 =====
+        function onWorkComplete() {
+            // 1. 彻底刹车，停止当前专注计时
+            clearInterval(countdownTimerId);
+            countdownTimerId = null;
+            countdownIsRunning = false;
+
+            // 2. 记录工作时长 (发送请求，不等待返回)
+            const workMinutes = parseInt(workDurationInput.value, 10);
+            logPomodoro(workMinutes);
+
+            // 3. 阻塞式弹窗
+            // 只有用户点击“确定”后，代码才会继续往下执行
+            alert('专注完成！进入休息。');
+
+            // 4. 用户点击确定后，才切换到休息模式并开始计时
+            switchToBreak();
+        }
+
+        // ===== 倒计时：休息阶段完成 =====
+        function onBreakComplete() {
+            // 1. 停止计时
+            clearInterval(countdownTimerId);
+            countdownTimerId = null;
+            countdownIsRunning = false;
+            
+            // 2. 阻塞式弹窗
+            alert('休息结束，准备开始下一个番茄！');
+            
+            // 3. 重置到工作模式等待开始
+            resetCountdown();
+        }
+
+        // ===== 倒计时：每秒 tick =====
+        function countdownTick() {
+            countdownRemainingSeconds--;
+            updateCountdownDisplay();
+            if (countdownRemainingSeconds <= 0) {
+                // 时间归零，立即停止计时器，防止重复触发
+                clearInterval(countdownTimerId);
+                countdownTimerId = null;
+                countdownIsRunning = false;
+
+                if (countdownCurrentPhase === PHASE_WORK) {
+                    onWorkComplete();
+                } else {
+                    onBreakComplete();
+                }
+            }
+        }
+
+        // ===== 倒计时：按钮事件 =====
+        countdownBtnStart.addEventListener('click', function () {
+            if (countdownIsRunning) return;
+            countdownIsRunning = true;
+            countdownBtnStart.disabled = true;
+            countdownBtnPause.disabled = false;
+            workDurationInput.disabled = true;
+            breakDurationInput.disabled = true;
+            taskSelect.disabled = true;
+
+            countdownTimerId = setInterval(countdownTick, 1000);
+        });
+
+        countdownBtnPause.addEventListener('click', function () {
+            if (!countdownIsRunning) return;
+            clearInterval(countdownTimerId);
+            countdownTimerId = null;
+            countdownIsRunning = false;
+            countdownBtnStart.disabled = false;
+            countdownBtnPause.disabled = true;
+        });
+
+        countdownBtnReset.addEventListener('click', function () {
+            resetCountdown();
+        });
+
+        // ===== 倒计时：时间设置变化时更新显示并保存到 localStorage =====
+        workDurationInput.addEventListener('change', function () {
+            const val = this.value;
+            // 保存到 localStorage
+            localStorage.setItem('pomodoroWorkDuration', val);
+            
+            if (!countdownIsRunning && countdownCurrentPhase === PHASE_WORK) {
+                countdownRemainingSeconds = parseInt(val, 10) * 60;
+                updateCountdownDisplay();
+            }
+        });
+
+        breakDurationInput.addEventListener('change', function () {
+            // 保存到 localStorage
+            localStorage.setItem('pomodoroBreakDuration', this.value);
+        });
+
+
+        // ===============================
+        // ===== 正计时模式（秒表） =====
+        // ===============================
+        const stopwatchDisplay = document.getElementById('stopwatch-display');
+        const stopwatchStatus = document.getElementById('stopwatch-status');
+        const stopwatchBtnStart = document.getElementById('stopwatch-btn-start');
+        const stopwatchBtnPause = document.getElementById('stopwatch-btn-pause');
+        const stopwatchBtnEnd = document.getElementById('stopwatch-btn-end');
+        const stopwatchBtnReset = document.getElementById('stopwatch-btn-reset');
+
+        let stopwatchTimerId = null;
+        let stopwatchElapsedSeconds = 0;
+        let stopwatchIsRunning = false;
+
+        // ===== 正计时：格式化时间 =====
+        function formatStopwatchTime(totalSec) {
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+
+        // ===== 正计时：更新显示 =====
+        function updateStopwatchDisplay() {
+            stopwatchDisplay.textContent = formatStopwatchTime(stopwatchElapsedSeconds);
+        }
+
+        // ===== 正计时：重置 =====
+        function resetStopwatch() {
+            clearInterval(stopwatchTimerId);
+            stopwatchTimerId = null;
+            stopwatchIsRunning = false;
+            stopwatchElapsedSeconds = 0;
+            updateStopwatchDisplay();
+            stopwatchStatus.textContent = '点击开始计时';
+            stopwatchStatus.className = 'fs-5 fw-bold text-secondary';
+            stopwatchBtnStart.disabled = false;
+            stopwatchBtnPause.disabled = true;
+            stopwatchBtnEnd.disabled = true;
+            taskSelect.disabled = false;
+        }
+
+        // ===== 正计时：结束并记录 =====
+        function endAndLogStopwatch() {
+            clearInterval(stopwatchTimerId);
+            stopwatchTimerId = null;
+            stopwatchIsRunning = false;
+
+            // 计算分钟数，四舍五入，至少1分钟
+            const durationMinutes = Math.max(1, Math.round(stopwatchElapsedSeconds / 60));
+            logPomodoro(durationMinutes);
+
+            alert('专注记录已保存！共专注了 ' + durationMinutes + ' 分钟。');
+            resetStopwatch();
+        }
+
+        // ===== 正计时：每秒 tick =====
+        function stopwatchTick() {
+            stopwatchElapsedSeconds++;
+            updateStopwatchDisplay();
+        }
+
+        // ===== 正计时：按钮事件 =====
+        stopwatchBtnStart.addEventListener('click', function () {
+            if (stopwatchIsRunning) return;
+            stopwatchIsRunning = true;
+            stopwatchStatus.textContent = '计时中...';
+            stopwatchStatus.className = 'fs-5 fw-bold text-success';
+            stopwatchBtnStart.disabled = true;
+            stopwatchBtnPause.disabled = false;
+            stopwatchBtnEnd.disabled = false;
+            taskSelect.disabled = true;
+
+            stopwatchTimerId = setInterval(stopwatchTick, 1000);
+        });
+
+        stopwatchBtnPause.addEventListener('click', function () {
+            if (!stopwatchIsRunning) return;
+            clearInterval(stopwatchTimerId);
+            stopwatchTimerId = null;
+            stopwatchIsRunning = false;
+            stopwatchStatus.textContent = '已暂停';
+            stopwatchStatus.className = 'fs-5 fw-bold text-warning';
+            stopwatchBtnStart.disabled = false;
+            stopwatchBtnPause.disabled = true;
+        });
+
+        stopwatchBtnEnd.addEventListener('click', function () {
+            endAndLogStopwatch();
+        });
+
+        stopwatchBtnReset.addEventListener('click', function () {
+            resetStopwatch();
+        });
+
+        // 初始化
+        resetCountdown();
+        resetStopwatch();
+
+    });
+</script>
+{% endblock %}

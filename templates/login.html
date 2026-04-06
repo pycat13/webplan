@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}登录{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0" style="border-radius: 1rem;">
+            <div class="card-header bg-white text-center border-0 pt-4 pb-0">
+                <h4 class="mb-0 fw-bold">欢迎回来</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('login_page') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input type="text" class="form-control form-control-lg bg-light border-0" id="username"
+                            name="username" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control form-control-lg bg-light border-0" id="password"
+                            name="password" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm">登录</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer bg-white text-center text-muted border-0 pb-4">
+                还没有账号？ <a href="{{ url_for('register_page') }}" class="text-primary text-decoration-none">去注册</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
